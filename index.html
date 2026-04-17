@@ -91,6 +91,19 @@
   .entry-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .score-pip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
   .entry-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border); font-style: italic; }
+  .entry-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  .entry-btn { flex: 1; padding: 7px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+  .entry-btn:hover { background: var(--bg); }
+  .entry-btn.delete { color: #C0392B; border-color: #FADBD8; }
+  .entry-btn.delete:hover { background: #FADBD8; }
+
+  /* edit modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; z-index: 100; }
+  .modal { background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding: 1.5rem; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 1.25rem; color: var(--text); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 1rem; }
+  .modal-btn { flex: 1; padding: 11px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 14px; cursor: pointer; color: var(--text); }
+  .modal-btn.primary { background: var(--text); color: white; border-color: var(--text); }
 
   .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-hint); }
   .empty-state p { font-size: 14px; line-height: 2; }
@@ -244,6 +257,58 @@
   </div>
 </div>
 
+<!-- Edit Modal -->
+<div id="edit-modal" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">編輯記錄</div>
+    <div class="form-group">
+      <label class="form-label">日期</label>
+      <input type="date" id="edit-date" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">週期</label>
+      <div class="cycle-row">
+        <select id="edit-week">
+          <option value="1">一七</option>
+          <option value="2">二七</option>
+          <option value="3">三七</option>
+          <option value="4">四七</option>
+        </select>
+        <span>第</span>
+        <input type="number" id="edit-day" min="1" max="7" value="1" />
+        <span>天</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">時段</label>
+      <select id="edit-time">
+        <option value="早上">早上</option>
+        <option value="晚上">晚上</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">運動內容</label>
+      <input type="text" id="edit-exercise" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">身體感覺（1–10）</label>
+      <div class="score-row" id="edit-score-row"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">心情關鍵字</label>
+      <input type="text" id="edit-mood" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">備注</label>
+      <textarea id="edit-note"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">取消</button>
+      <button class="modal-btn primary" onclick="saveEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PHASES = {
   1: { name: '一七 · 春芽', emoji: '🌱', cls: 'phase-1', tag: 'phase-1' },
@@ -350,6 +415,10 @@ function renderHistory() {
         ${e.mood ? `<span>· ${e.mood}</span>` : ''}
       </div>
       ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
+      <div class="entry-actions">
+        <button class="entry-btn" onclick="openEdit(${e.id})">編輯</button>
+        <button class="entry-btn delete" onclick="deleteEntry(${e.id})">刪除</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -414,7 +483,93 @@ function exportData() {
   });
 }
 
+let editingId = null;
+let editScore = null;
+
+function buildEditScoreRow() {
+  const row = document.getElementById('edit-score-row');
+  row.innerHTML = '';
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'score-btn';
+    btn.textContent = i;
+    btn.onclick = () => {
+      editScore = i;
+      document.querySelectorAll('#edit-score-row .score-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    row.appendChild(btn);
+  }
+}
+
+function openEdit(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  editScore = e.score;
+
+  // Convert zh-TW date back to input format
+  const parts = e.date.replace(/\//g, '-').split('-');
+  const isoDate = parts.length === 3 ? `${parts[0].padStart(4,'0')}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}` : new Date().toISOString().split('T')[0];
+
+  document.getElementById('edit-date').value = isoDate;
+  document.getElementById('edit-week').value = e.week;
+  document.getElementById('edit-day').value = e.day;
+  document.getElementById('edit-time').value = e.time;
+  document.getElementById('edit-exercise').value = e.exercise;
+  document.getElementById('edit-mood').value = e.mood || '';
+  document.getElementById('edit-note').value = e.note || '';
+
+  document.querySelectorAll('#edit-score-row .score-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i + 1 === e.score);
+  });
+
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeModal(event) {
+  if (!event || event.target === document.getElementById('edit-modal')) {
+    document.getElementById('edit-modal').style.display = 'none';
+    editingId = null;
+    editScore = null;
+  }
+}
+
+function saveEdit() {
+  if (!editingId) return;
+  const idx = entries.findIndex(x => x.id === editingId);
+  if (idx === -1) return;
+
+  const dateVal = document.getElementById('edit-date').value;
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+
+  entries[idx] = {
+    ...entries[idx],
+    date: dateObj.toLocaleDateString('zh-TW'),
+    week: parseInt(document.getElementById('edit-week').value),
+    day: parseInt(document.getElementById('edit-day').value) || 1,
+    time: document.getElementById('edit-time').value,
+    exercise: document.getElementById('edit-exercise').value.trim(),
+    score: editScore || entries[idx].score,
+    mood: document.getElementById('edit-mood').value.trim(),
+    note: document.getElementById('edit-note').value.trim(),
+  };
+  save();
+  document.getElementById('edit-modal').style.display = 'none';
+  editingId = null;
+  editScore = null;
+  renderHistory();
+}
+
+function deleteEntry(id) {
+  if (!confirm('確定要刪除這筆記錄嗎？')) return;
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderHistory();
+}
+
 buildScoreRow();
+buildEditScoreRow();
 updatePhase();
 document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
