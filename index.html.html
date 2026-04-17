@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>好日子練習</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF9F6;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --border-md: rgba(0,0,0,0.15);
+    --text: #1a1a1a;
+    --text-muted: #888;
+    --text-hint: #bbb;
+    --accent: #3B6D11;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); font-family: 'Noto Sans TC', sans-serif; color: var(--text); }
+
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* header */
+  .header { padding: 2rem 1.5rem 1rem; border-bottom: 0.5px solid var(--border); }
+  .header-title { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 400; letter-spacing: 0.05em; }
+  .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.08em; }
+
+  /* tab bar */
+  .tab-bar { display: flex; border-bottom: 0.5px solid var(--border); background: var(--surface); }
+  .tab { flex: 1; padding: 14px 8px; border: none; background: transparent; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text-muted); letter-spacing: 0.05em; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 500; }
+
+  /* content */
+  .content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* phase badge */
+  .phase-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-size: 12px; letter-spacing: 0.06em; margin-bottom: 1.5rem; font-family: 'Noto Serif TC', serif; }
+  .phase-1 { background: #FDF0F5; color: #8B3A5A; border: 0.5px solid #E8B4C8; }
+  .phase-2 { background: #FEF8EE; color: #7A5010; border: 0.5px solid #F0D090; }
+  .phase-3 { background: #FEF3EE; color: #7A3A1A; border: 0.5px solid #EEC0A0; }
+  .phase-4 { background: #EEF4FB; color: #1A4A7A; border: 0.5px solid #A0C0E8; }
+
+  /* form */
+  .form-group { margin-bottom: 1.25rem; }
+  .form-label { display: block; font-size: 11px; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%; padding: 10px 12px; border: 0.5px solid var(--border-md); border-radius: var(--radius-sm);
+    background: var(--surface); font-family: 'Noto Sans TC', sans-serif; font-size: 14px; color: var(--text);
+    outline: none; transition: border-color 0.2s; appearance: none; -webkit-appearance: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+  .cycle-row { display: flex; align-items: center; gap: 10px; }
+  .cycle-row select { flex: 1; }
+  .cycle-row input { width: 60px; text-align: center; }
+  .cycle-row span { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+
+  /* score buttons */
+  .score-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .score-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 0.5px solid var(--border-md);
+    background: var(--surface); cursor: pointer; font-size: 13px; font-family: 'Noto Sans TC', sans-serif;
+    color: var(--text-muted); transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  .score-btn:hover { border-color: var(--accent); }
+  .score-btn.selected { background: var(--accent); border-color: var(--accent); color: white; font-weight: 500; }
+
+  /* submit */
+  .submit-btn {
+    width: 100%; padding: 13px; background: var(--text); border: none; border-radius: var(--radius-sm);
+    font-family: 'Noto Sans TC', sans-serif; font-size: 14px; color: white; cursor: pointer;
+    letter-spacing: 0.08em; margin-top: 0.5rem; transition: opacity 0.2s;
+  }
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:active { opacity: 0.7; }
+  .submit-btn.saved { background: var(--accent); }
+
+  /* history */
+  .entry-card { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; background: var(--surface); }
+  .entry-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .entry-date { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; }
+  .entry-phase-tag { font-size: 11px; padding: 2px 10px; border-radius: 10px; font-family: 'Noto Serif TC', serif; }
+  .entry-exercise { font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
+  .entry-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .score-pip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .entry-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border); font-style: italic; }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-hint); }
+  .empty-state p { font-size: 14px; line-height: 2; }
+  .empty-icon { font-family: 'Noto Serif TC', serif; font-size: 32px; margin-bottom: 1rem; opacity: 0.4; }
+
+  /* export */
+  .export-btn {
+    width: 100%; padding: 11px; background: transparent; border: 0.5px solid var(--border-md);
+    border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 13px;
+    color: var(--text-muted); cursor: pointer; margin-top: 1rem; transition: all 0.2s; letter-spacing: 0.04em;
+  }
+  .export-btn:hover { background: var(--surface); border-color: var(--text-muted); color: var(--text); }
+
+  /* cycle viz */
+  .viz-section { margin-bottom: 2rem; }
+  .viz-title { font-size: 11px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
+  .viz-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .viz-cell {
+    aspect-ratio: 1; border-radius: 6px; border: 0.5px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--text-hint); background: var(--surface); position: relative;
+  }
+  .viz-cell .cell-code { font-size: 8px; color: var(--text-hint); }
+  .viz-cell .cell-score { font-size: 12px; font-weight: 500; color: var(--text); margin-top: 1px; }
+  .viz-cell.has-data { border-color: var(--border-md); }
+
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+  .stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 300; font-family: 'Noto Serif TC', serif; color: var(--text); }
+
+  .phase-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .phase-row:last-child { border-bottom: none; }
+  .phase-row-name { font-size: 13px; font-family: 'Noto Serif TC', serif; }
+  .phase-row-stat { font-size: 13px; color: var(--text-muted); }
+
+  .week-labels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 4px; }
+  .week-label { font-size: 10px; color: var(--text-hint); text-align: center; }
+
+  .divider { height: 0.5px; background: var(--border); margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-title">好日子練習</div>
+    <div class="header-sub">身體節律記錄</div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('record')">記錄</button>
+    <button class="tab" onclick="switchTab('history')">歷史</button>
+    <button class="tab" onclick="switchTab('cycle')">週期</button>
+  </div>
+
+  <div class="content">
+
+    <!-- 記錄 -->
+    <div id="section-record" class="section active">
+      <div id="phase-display" class="phase-badge phase-1">🌱 一七 · 春芽</div>
+
+      <div class="form-group">
+        <label class="form-label">週期</label>
+        <div class="cycle-row">
+          <select id="cycle-week" onchange="updatePhase()">
+            <option value="1">一七</option>
+            <option value="2">二七</option>
+            <option value="3">三七</option>
+            <option value="4">四七</option>
+          </select>
+          <span>第</span>
+          <input type="number" id="cycle-day" min="1" max="7" value="1" onchange="updatePhase()" />
+          <span>天</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" id="record-date" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">時段</label>
+        <select id="time-slot">
+          <option value="早上">早上</option>
+          <option value="晚上">晚上</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">今天做了什麼運動</label>
+        <input type="text" id="exercise" placeholder="例：跑步30分、重訓、瑜伽" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">身體感覺（1–10）</label>
+        <div class="score-row" id="score-row"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">心情關鍵字</label>
+        <input type="text" id="mood" placeholder="例：清醒、煩、輕盈、沉" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">備注（選填）</label>
+        <textarea id="note" placeholder="其他想記錄的..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="saveEntry()">儲存</button>
+    </div>
+
+    <!-- 歷史 -->
+    <div id="section-history" class="section">
+      <div id="history-list"></div>
+      <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
+    </div>
+
+    <!-- 週期 -->
+    <div id="section-cycle" class="section">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">總記錄筆數</div>
+          <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">平均身體感覺</div>
+          <div class="stat-value" id="stat-avg">—</div>
+        </div>
+      </div>
+
+      <div class="viz-section">
+        <div class="viz-title">28天記錄地圖</div>
+        <div class="week-labels">
+          <div class="week-label">一</div><div class="week-label">二</div>
+          <div class="week-label">三</div><div class="week-label">四</div>
+          <div class="week-label">五</div><div class="week-label">六</div>
+          <div class="week-label">七</div>
+        </div>
+        <div class="viz-grid" id="viz-grid"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="viz-title">各七平均</div>
+      <div id="phase-summary"></div>
+
+      <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PHASES = {
+  1: { name: '一七 · 春芽', emoji: '🌱', cls: 'phase-1', tag: 'phase-1' },
+  2: { name: '二七 · 夏艷', emoji: '🌸', cls: 'phase-2', tag: 'phase-2' },
+  3: { name: '三七 · 秋霞', emoji: '🍂', cls: 'phase-3', tag: 'phase-3' },
+  4: { name: '四七 · 冬盤', emoji: '❄️', cls: 'phase-4', tag: 'phase-4' }
+};
+
+const SCORE_COLORS = ['','#F09595','#F09595','#FAC775','#FAC775','#FAC775','#C0DD97','#C0DD97','#97C459','#639922','#3B6D11'];
+
+let entries = [];
+let selectedScore = null;
+
+try { entries = JSON.parse(localStorage.getItem('good_day_entries') || '[]'); } catch(e) {}
+
+function save() {
+  try { localStorage.setItem('good_day_entries', JSON.stringify(entries)); } catch(e) {}
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['record','history','cycle'][i] === tab);
+  });
+  ['record','history','cycle'].forEach(s => {
+    document.getElementById('section-' + s).classList.toggle('active', s === tab);
+  });
+  if (tab === 'history') renderHistory();
+  if (tab === 'cycle') renderCycle();
+}
+
+function updatePhase() {
+  const w = parseInt(document.getElementById('cycle-week').value);
+  const p = PHASES[w];
+  const el = document.getElementById('phase-display');
+  el.className = 'phase-badge ' + p.cls;
+  el.textContent = p.emoji + ' ' + p.name;
+}
+
+function buildScoreRow() {
+  const row = document.getElementById('score-row');
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'score-btn';
+    btn.textContent = i;
+    btn.onclick = () => {
+      selectedScore = i;
+      document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    row.appendChild(btn);
+  }
+}
+
+function saveEntry() {
+  const week = parseInt(document.getElementById('cycle-week').value);
+  const day = parseInt(document.getElementById('cycle-day').value) || 1;
+  const time = document.getElementById('time-slot').value;
+  const exercise = document.getElementById('exercise').value.trim();
+  const mood = document.getElementById('mood').value.trim();
+  const note = document.getElementById('note').value.trim();
+  const recordDateVal = document.getElementById('record-date').value;
+
+  if (!exercise) { alert('請填寫運動內容'); return; }
+  if (!selectedScore) { alert('請選擇身體感覺分數'); return; }
+
+  const dateObj = recordDateVal ? new Date(recordDateVal + 'T12:00:00') : new Date();
+  const date = dateObj.toLocaleDateString('zh-TW');
+
+  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, note });
+  save();
+
+  document.getElementById('exercise').value = '';
+  document.getElementById('mood').value = '';
+  document.getElementById('note').value = '';
+  selectedScore = null;
+  document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+  // Reset date to today
+  document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
+
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '已儲存 ✓';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = '儲存'; btn.classList.remove('saved'); }, 1800);
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><p>還沒有記錄<br>從第一筆開始吧</p></div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => {
+    const p = PHASES[e.week];
+    const sc = SCORE_COLORS[e.score] || '#ccc';
+    return `<div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-date">${e.date} · ${e.time}</span>
+        <span class="entry-phase-tag ${p.tag}">${p.emoji} ${e.week}-${e.day}</span>
+      </div>
+      <div class="entry-exercise">${e.exercise}</div>
+      <div class="entry-meta">
+        <span class="score-pip" style="background:${sc}"></span>
+        <span>身體感覺 ${e.score}/10</span>
+        ${e.mood ? `<span>· ${e.mood}</span>` : ''}
+      </div>
+      ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderCycle() {
+  document.getElementById('stat-total').textContent = entries.length;
+  if (entries.length) {
+    const avg = entries.reduce((s, e) => s + e.score, 0) / entries.length;
+    document.getElementById('stat-avg').textContent = avg.toFixed(1);
+  }
+
+  const grid = document.getElementById('viz-grid');
+  grid.innerHTML = '';
+  for (let w = 1; w <= 4; w++) {
+    for (let d = 1; d <= 7; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'viz-cell';
+      const dayEntries = entries.filter(e => e.week === w && e.day === d);
+      const code = document.createElement('div');
+      code.className = 'cell-code';
+      code.textContent = w + '-' + d;
+      cell.appendChild(code);
+      if (dayEntries.length) {
+        cell.classList.add('has-data');
+        const avg = dayEntries.reduce((s, e) => s + e.score, 0) / dayEntries.length;
+        const color = SCORE_COLORS[Math.round(avg)] || '#ccc';
+        cell.style.background = color + '33';
+        cell.style.borderColor = color + '88';
+        const score = document.createElement('div');
+        score.className = 'cell-score';
+        score.textContent = Math.round(avg);
+        cell.appendChild(score);
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  const summary = document.getElementById('phase-summary');
+  summary.innerHTML = [1,2,3,4].map(w => {
+    const pe = entries.filter(e => e.week === w);
+    if (!pe.length) return '';
+    const avg = (pe.reduce((s,e) => s + e.score, 0) / pe.length).toFixed(1);
+    const p = PHASES[w];
+    return `<div class="phase-row">
+      <span class="phase-row-name">${p.emoji} ${p.name}</span>
+      <span class="phase-row-stat">${avg} 分 · ${pe.length} 筆</span>
+    </div>`;
+  }).join('');
+}
+
+function exportData() {
+  if (!entries.length) { alert('還沒有記錄可以匯出'); return; }
+  const text = '好日子練習 - 身體節律記錄\n' + '='.repeat(30) + '\n\n' +
+    entries.map(e => {
+      const p = PHASES[e.week];
+      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'}${e.note ? ' | ' + e.note : ''}`;
+    }).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll('.export-btn');
+    btns.forEach(b => { b.textContent = '已複製！貼給 AI 分析吧 ✓'; });
+    setTimeout(() => btns.forEach(b => b.textContent = '複製所有記錄（貼給 AI 分析）'), 2500);
+  });
+}
+
+buildScoreRow();
+updatePhase();
+document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
