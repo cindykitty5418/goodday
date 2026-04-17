@@ -168,6 +168,11 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" id="record-date" />
+      </div>
+
+      <div class="form-group">
         <label class="form-label">時段</label>
         <select id="time-slot">
           <option value="早上">早上</option>
@@ -299,11 +304,15 @@ function saveEntry() {
   const exercise = document.getElementById('exercise').value.trim();
   const mood = document.getElementById('mood').value.trim();
   const note = document.getElementById('note').value.trim();
+  const recordDateVal = document.getElementById('record-date').value;
 
   if (!exercise) { alert('請填寫運動內容'); return; }
   if (!selectedScore) { alert('請選擇身體感覺分數'); return; }
 
-  entries.unshift({ id: Date.now(), date: new Date().toLocaleDateString('zh-TW'), week, day, time, exercise, score: selectedScore, mood, note });
+  const dateObj = recordDateVal ? new Date(recordDateVal + 'T12:00:00') : new Date();
+  const date = dateObj.toLocaleDateString('zh-TW');
+
+  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, note });
   save();
 
   document.getElementById('exercise').value = '';
@@ -311,6 +320,8 @@ function saveEntry() {
   document.getElementById('note').value = '';
   selectedScore = null;
   document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+  // Reset date to today
+  document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 
   const btn = document.getElementById('submit-btn');
   btn.textContent = '已儲存 ✓';
@@ -405,6 +416,7 @@ function exportData() {
 
 buildScoreRow();
 updatePhase();
+document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
 </body>
 </html>
