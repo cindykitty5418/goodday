@@ -89,7 +89,9 @@
   .entry-phase-tag { font-size: 11px; padding: 2px 10px; border-radius: 10px; font-family: 'Noto Serif TC', serif; }
   .entry-exercise { font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
   .entry-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .score-pip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .water-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .water-btn { padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .water-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
   .entry-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border); font-style: italic; }
   .entry-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
   .entry-btn { flex: 1; padding: 7px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
@@ -209,6 +211,11 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label">喝水（cc，選填）</label>
+        <div class="water-row" id="water-row"></div>
+      </div>
+
+      <div class="form-group">
         <label class="form-label">備注（選填）</label>
         <textarea id="note" placeholder="其他想記錄的..."></textarea>
       </div>
@@ -299,6 +306,10 @@
       <input type="text" id="edit-mood" />
     </div>
     <div class="form-group">
+      <label class="form-label">喝水（cc，選填）</label>
+      <div class="water-row" id="edit-water-row"></div>
+    </div>
+    <div class="form-group">
       <label class="form-label">備注</label>
       <textarea id="edit-note"></textarea>
     </div>
@@ -368,6 +379,7 @@ function saveEntry() {
   const time = document.getElementById('time-slot').value;
   const exercise = document.getElementById('exercise').value.trim();
   const mood = document.getElementById('mood').value.trim();
+  const water = selectedWater;
   const note = document.getElementById('note').value.trim();
   const recordDateVal = document.getElementById('record-date').value;
 
@@ -377,12 +389,14 @@ function saveEntry() {
   const dateObj = recordDateVal ? new Date(recordDateVal + 'T12:00:00') : new Date();
   const date = dateObj.toLocaleDateString('zh-TW');
 
-  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, note });
+  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, water: water || null, note });
   save();
 
   document.getElementById('exercise').value = '';
   document.getElementById('mood').value = '';
   document.getElementById('note').value = '';
+  selectedWater = null;
+  document.querySelectorAll('#water-row .water-btn').forEach(b => b.classList.remove('selected'));
   selectedScore = null;
   document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
   // Reset date to today
@@ -413,6 +427,7 @@ function renderHistory() {
         <span class="score-pip" style="background:${sc}"></span>
         <span>身體感覺 ${e.score}/10</span>
         ${e.mood ? `<span>· ${e.mood}</span>` : ''}
+        ${e.water ? `<span>· 💧 ${e.water}cc</span>` : ''}
       </div>
       ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
       <div class="entry-actions">
@@ -474,7 +489,7 @@ function exportData() {
   const text = '好日子練習 - 身體節律記錄\n' + '='.repeat(30) + '\n\n' +
     entries.map(e => {
       const p = PHASES[e.week];
-      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'}${e.note ? ' | ' + e.note : ''}`;
+      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'} | 喝水${e.water ? e.water + 'cc' : '—'}${e.note ? ' | ' + e.note : ''}`;
     }).join('\n');
   navigator.clipboard.writeText(text).then(() => {
     const btns = document.querySelectorAll('.export-btn');
@@ -485,6 +500,32 @@ function exportData() {
 
 let editingId = null;
 let editScore = null;
+let editWater = null;
+let selectedWater = null;
+
+const WATER_OPTIONS = [500, 1000, 1500, 2000, 2500, 3000];
+
+function buildWaterRow(rowId, onSelect) {
+  const row = document.getElementById(rowId);
+  row.innerHTML = '';
+  WATER_OPTIONS.forEach(cc => {
+    const btn = document.createElement('button');
+    btn.className = 'water-btn';
+    btn.textContent = cc + 'cc';
+    btn.onclick = () => {
+      const current = row.querySelector('.water-btn.selected');
+      if (current === btn) {
+        btn.classList.remove('selected');
+        onSelect(null);
+      } else {
+        row.querySelectorAll('.water-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        onSelect(cc);
+      }
+    };
+    row.appendChild(btn);
+  });
+}
 
 function buildEditScoreRow() {
   const row = document.getElementById('edit-score-row');
@@ -518,6 +559,10 @@ function openEdit(id) {
   document.getElementById('edit-time').value = e.time;
   document.getElementById('edit-exercise').value = e.exercise;
   document.getElementById('edit-mood').value = e.mood || '';
+  editWater = e.water || null;
+  document.querySelectorAll('#edit-water-row .water-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.textContent) === e.water);
+  });
   document.getElementById('edit-note').value = e.note || '';
 
   document.querySelectorAll('#edit-score-row .score-btn').forEach((b, i) => {
@@ -552,6 +597,7 @@ function saveEdit() {
     exercise: document.getElementById('edit-exercise').value.trim(),
     score: editScore || entries[idx].score,
     mood: document.getElementById('edit-mood').value.trim(),
+    water: editWater,
     note: document.getElementById('edit-note').value.trim(),
   };
   save();
@@ -570,6 +616,8 @@ function deleteEntry(id) {
 
 buildScoreRow();
 buildEditScoreRow();
+buildWaterRow('water-row', v => { selectedWater = v; });
+buildWaterRow('edit-water-row', v => { editWater = v; });
 updatePhase();
 document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
