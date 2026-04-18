@@ -269,6 +269,11 @@
       <div class="viz-title">各七平均</div>
       <div id="phase-summary"></div>
 
+      <div class="divider"></div>
+
+      <div class="viz-title">喝水記錄</div>
+      <div id="water-summary"></div>
+
       <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
     </div>
 
@@ -540,6 +545,30 @@ function renderCycle() {
       <span class="phase-row-stat">${avg} 分 · ${pe.length} 筆</span>
     </div>`;
   }).join('');
+
+  // Water summary
+  const waterSummary = document.getElementById('water-summary');
+  if (!waterLogs.length) {
+    waterSummary.innerHTML = '<p style="font-size:13px; color:var(--text-hint); padding: 8px 0;">還沒有喝水記錄</p>';
+  } else {
+    const totalAvg = (waterLogs.reduce((s, w) => s + w.water, 0) / waterLogs.length).toFixed(0);
+    waterSummary.innerHTML = `
+      <div class="phase-row">
+        <span class="phase-row-name">平均每日喝水</span>
+        <span class="phase-row-stat">${totalAvg} cc</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-row-name">記錄天數</span>
+        <span class="phase-row-stat">${waterLogs.length} 天</span>
+      </div>
+      ${waterLogs.slice(0, 5).map(w => `
+        <div class="phase-row">
+          <span class="phase-row-name" style="font-size:12px; color:var(--text-muted);">💧 ${w.date}</span>
+          <span class="phase-row-stat">${w.water} cc</span>
+        </div>`).join('')}
+      ${waterLogs.length > 5 ? `<p style="font-size:11px; color:var(--text-hint); padding: 6px 0;">顯示最近 5 筆</p>` : ''}
+    `;
+  }
 }
 
 function exportData() {
