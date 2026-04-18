@@ -90,6 +90,7 @@
   .entry-exercise { font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
   .entry-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .water-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .section-divider { font-size: 11px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; padding: 8px 0 12px; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; font-weight: 500; }
   .water-btn { padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
   .water-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
   .entry-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border); font-style: italic; }
@@ -187,6 +188,9 @@
         <input type="date" id="record-date" />
       </div>
 
+      <!-- 運動區塊 -->
+      <div class="section-divider">運動記錄</div>
+
       <div class="form-group">
         <label class="form-label">時段</label>
         <select id="time-slot">
@@ -196,7 +200,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">今天做了什麼運動</label>
+        <label class="form-label">做了什麼運動</label>
         <input type="text" id="exercise" placeholder="例：跑步30分、重訓、瑜伽" />
       </div>
 
@@ -211,16 +215,23 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">喝水（cc，選填）</label>
-        <div class="water-row" id="water-row"></div>
-      </div>
-
-      <div class="form-group">
         <label class="form-label">備注（選填）</label>
         <textarea id="note" placeholder="其他想記錄的..."></textarea>
       </div>
 
-      <button class="submit-btn" id="submit-btn" onclick="saveEntry()">儲存</button>
+      <button class="submit-btn" id="submit-btn" onclick="saveEntry()">儲存運動記錄</button>
+
+      <!-- 今日喝水區塊 -->
+      <div class="section-divider" style="margin-top: 1.5rem;">今日喝水</div>
+
+      <div class="form-group">
+        <label class="form-label">今天喝了多少水（cc）</label>
+        <div class="water-row" id="water-row"></div>
+      </div>
+
+      <div id="water-today-info" style="font-size:12px; color: var(--text-muted); margin-bottom: 0.75rem; display:none;"></div>
+
+      <button class="submit-btn" id="water-submit-btn" onclick="saveWater()" style="background: var(--accent);">儲存今日喝水</button>
     </div>
 
     <!-- 歷史 -->
@@ -379,7 +390,6 @@ function saveEntry() {
   const time = document.getElementById('time-slot').value;
   const exercise = document.getElementById('exercise').value.trim();
   const mood = document.getElementById('mood').value.trim();
-  const water = selectedWater;
   const note = document.getElementById('note').value.trim();
   const recordDateVal = document.getElementById('record-date').value;
 
@@ -389,14 +399,14 @@ function saveEntry() {
   const dateObj = recordDateVal ? new Date(recordDateVal + 'T12:00:00') : new Date();
   const date = dateObj.toLocaleDateString('zh-TW');
 
-  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, water: water || null, note });
+  entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, note });
   save();
 
   document.getElementById('exercise').value = '';
   document.getElementById('mood').value = '';
   document.getElementById('note').value = '';
-  selectedWater = null;
-  document.querySelectorAll('#water-row .water-btn').forEach(b => b.classList.remove('selected'));
+  selectedScore = null;
+  document.querySelectorAll('#score-row .score-btn').forEach(b => b.classList.remove('selected'));
   selectedScore = null;
   document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
   // Reset date to today
@@ -408,6 +418,47 @@ function saveEntry() {
   setTimeout(() => { btn.textContent = '儲存'; btn.classList.remove('saved'); }, 1800);
 }
 
+let waterLogs = [];
+try { waterLogs = JSON.parse(localStorage.getItem('good_day_water') || '[]'); } catch(e) {}
+
+function saveWater() {
+  if (!selectedWater) { alert('請選擇今日喝水量'); return; }
+  const dateVal = document.getElementById('record-date').value;
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  const date = dateObj.toLocaleDateString('zh-TW');
+
+  // Update or add
+  const idx = waterLogs.findIndex(w => w.date === date);
+  if (idx >= 0) {
+    waterLogs[idx].water = selectedWater;
+  } else {
+    waterLogs.unshift({ date, water: selectedWater });
+  }
+  try { localStorage.setItem('good_day_water', JSON.stringify(waterLogs)); } catch(e) {}
+
+  selectedWater = null;
+  document.querySelectorAll('#water-row .water-btn').forEach(b => b.classList.remove('selected'));
+
+  const btn = document.getElementById('water-submit-btn');
+  btn.textContent = '已儲存 ✓';
+  setTimeout(() => { btn.textContent = '儲存今日喝水'; updateWaterInfo(); }, 1800);
+  updateWaterInfo();
+}
+
+function updateWaterInfo() {
+  const dateVal = document.getElementById('record-date').value;
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  const date = dateObj.toLocaleDateString('zh-TW');
+  const log = waterLogs.find(w => w.date === date);
+  const info = document.getElementById('water-today-info');
+  if (log) {
+    info.style.display = 'block';
+    info.textContent = `${date} 已記錄：${log.water}cc`;
+  } else {
+    info.style.display = 'none';
+  }
+}
+
 function renderHistory() {
   const list = document.getElementById('history-list');
   if (!entries.length) {
@@ -417,6 +468,7 @@ function renderHistory() {
   list.innerHTML = entries.map(e => {
     const p = PHASES[e.week];
     const sc = SCORE_COLORS[e.score] || '#ccc';
+    const wLog = waterLogs.find(w => w.date === e.date);
     return `<div class="entry-card">
       <div class="entry-header">
         <span class="entry-date">${e.date} · ${e.time}</span>
@@ -427,7 +479,7 @@ function renderHistory() {
         <span class="score-pip" style="background:${sc}"></span>
         <span>身體感覺 ${e.score}/10</span>
         ${e.mood ? `<span>· ${e.mood}</span>` : ''}
-        ${e.water ? `<span>· 💧 ${e.water}cc</span>` : ''}
+        ${wLog ? `<span>· 💧 ${wLog.water}cc</span>` : ''}
       </div>
       ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
       <div class="entry-actions">
@@ -489,7 +541,8 @@ function exportData() {
   const text = '好日子練習 - 身體節律記錄\n' + '='.repeat(30) + '\n\n' +
     entries.map(e => {
       const p = PHASES[e.week];
-      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'} | 喝水${e.water ? e.water + 'cc' : '—'}${e.note ? ' | ' + e.note : ''}`;
+      const wLog = waterLogs.find(w => w.date === e.date);
+      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'} | 喝水${wLog ? wLog.water + 'cc' : '—'}${e.note ? ' | ' + e.note : ''}`;
     }).join('\n');
   navigator.clipboard.writeText(text).then(() => {
     const btns = document.querySelectorAll('.export-btn');
@@ -618,6 +671,7 @@ buildScoreRow();
 buildEditScoreRow();
 buildWaterRow('water-row', v => { selectedWater = v; });
 buildWaterRow('edit-water-row', v => { editWater = v; });
+updateWaterInfo();
 updatePhase();
 document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
