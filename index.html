@@ -343,11 +343,20 @@ const SCORE_COLORS = ['','#F09595','#F09595','#FAC775','#FAC775','#FAC775','#C0D
 
 let entries = [];
 let selectedScore = null;
+let waterLogs = [];
 
 try { entries = JSON.parse(localStorage.getItem('good_day_entries') || '[]'); } catch(e) {}
+try { waterLogs = JSON.parse(localStorage.getItem('good_day_water') || '[]'); } catch(e) {}
 
 function save() {
   try { localStorage.setItem('good_day_entries', JSON.stringify(entries)); } catch(e) {}
+}
+
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
 }
 
 function switchTab(tab) {
@@ -397,7 +406,7 @@ function saveEntry() {
   if (!selectedScore) { alert('請選擇身體感覺分數'); return; }
 
   const dateObj = recordDateVal ? new Date(recordDateVal + 'T12:00:00') : new Date();
-  const date = dateObj.toLocaleDateString('zh-TW');
+  const date = fmtDate(dateObj);
 
   entries.unshift({ id: Date.now(), date, week, day, time, exercise, score: selectedScore, mood, note });
   save();
@@ -418,14 +427,11 @@ function saveEntry() {
   setTimeout(() => { btn.textContent = '儲存'; btn.classList.remove('saved'); }, 1800);
 }
 
-let waterLogs = [];
-try { waterLogs = JSON.parse(localStorage.getItem('good_day_water') || '[]'); } catch(e) {}
-
 function saveWater() {
   if (!selectedWater) { alert('請選擇今日喝水量'); return; }
   const dateVal = document.getElementById('record-date').value;
   const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
-  const date = dateObj.toLocaleDateString('zh-TW');
+  const date = fmtDate(dateObj);
 
   // Update or add
   const idx = waterLogs.findIndex(w => w.date === date);
@@ -448,7 +454,7 @@ function saveWater() {
 function updateWaterInfo() {
   const dateVal = document.getElementById('record-date').value;
   const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
-  const date = dateObj.toLocaleDateString('zh-TW');
+  const date = fmtDate(dateObj);
   const log = waterLogs.find(w => w.date === date);
   const info = document.getElementById('water-today-info');
   if (log) {
@@ -643,7 +649,7 @@ function saveEdit() {
 
   entries[idx] = {
     ...entries[idx],
-    date: dateObj.toLocaleDateString('zh-TW'),
+    date: fmtDate(dateObj),
     week: parseInt(document.getElementById('edit-week').value),
     day: parseInt(document.getElementById('edit-day').value) || 1,
     time: document.getElementById('edit-time').value,
