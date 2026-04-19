@@ -449,6 +449,23 @@ function save() {
   try { localStorage.setItem('good_day_entries', JSON.stringify(entries)); } catch(e) {}
 }
 
+// Migrate old entry.water to waterLogs
+function migrateWaterData() {
+  let changed = false;
+  entries.forEach(e => {
+    if (e.water) {
+      const exists = waterLogs.find(w => w.date === e.date);
+      if (!exists) {
+        waterLogs.unshift({ date: e.date, water: e.water });
+        changed = true;
+      }
+    }
+  });
+  if (changed) {
+    try { localStorage.setItem('good_day_water', JSON.stringify(waterLogs)); } catch(err) {}
+  }
+}
+
 function fmtDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -729,7 +746,6 @@ function openEdit(id) {
   editingId = id;
   editScore = e.score;
 
-  // Convert zh-TW date back to input format
   const parts = e.date.replace(/\//g, '-').split('-');
   const isoDate = parts.length === 3 ? `${parts[0].padStart(4,'0')}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}` : new Date().toISOString().split('T')[0];
 
@@ -739,12 +755,15 @@ function openEdit(id) {
   document.getElementById('edit-time').value = e.time;
   document.getElementById('edit-exercise').value = e.exercise;
   document.getElementById('edit-mood').value = e.mood || '';
-  editWater = e.water || null;
-  document.querySelectorAll('#edit-water-row .water-btn').forEach(b => {
-    b.classList.toggle('selected', parseInt(b.textContent) === e.water);
-  });
-  document.getElementById('edit-note').value = e.note || '';
 
+  // Read water from waterLogs (by date), fallback to entry.water for old records
+  const wLog = waterLogs.find(w => w.date === e.date);
+  editWater = wLog ? wLog.water : (e.water || null);
+  document.querySelectorAll('#edit-water-row .water-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.textContent) === editWater);
+  });
+
+  document.getElementById('edit-note').value = e.note || '';
   document.querySelectorAll('#edit-score-row .score-btn').forEach((b, i) => {
     b.classList.toggle('selected', i + 1 === e.score);
   });
@@ -767,23 +786,36 @@ function saveEdit() {
 
   const dateVal = document.getElementById('edit-date').value;
   const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  const date = fmtDate(dateObj);
 
   entries[idx] = {
     ...entries[idx],
-    date: fmtDate(dateObj),
+    date,
     week: parseInt(document.getElementById('edit-week').value),
     day: parseInt(document.getElementById('edit-day').value) || 1,
     time: document.getElementById('edit-time').value,
     exercise: document.getElementById('edit-exercise').value.trim(),
     score: editScore || entries[idx].score,
     mood: document.getElementById('edit-mood').value.trim(),
-    water: editWater,
     note: document.getElementById('edit-note').value.trim(),
   };
   save();
+
+  // Sync water to waterLogs
+  if (editWater) {
+    const widx = waterLogs.findIndex(w => w.date === date);
+    if (widx >= 0) {
+      waterLogs[widx].water = editWater;
+    } else {
+      waterLogs.unshift({ date, water: editWater });
+    }
+    try { localStorage.setItem('good_day_water', JSON.stringify(waterLogs)); } catch(err) {}
+  }
+
   document.getElementById('edit-modal').style.display = 'none';
   editingId = null;
   editScore = null;
+  editWater = null;
   renderHistory();
 }
 
@@ -872,6 +904,7 @@ buildScoreRow();
 buildEditScoreRow();
 buildWaterRow('water-row', v => { selectedWater = v; });
 buildWaterRow('edit-water-row', v => { editWater = v; });
+migrateWaterData();
 updateWaterInfo();
 updatePhase();
 renderWishes();
