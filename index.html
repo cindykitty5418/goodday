@@ -147,6 +147,28 @@
   .week-label { font-size: 10px; color: var(--text-hint); text-align: center; }
 
   .divider { height: 0.5px; background: var(--border); margin: 1.5rem 0; }
+
+  /* wishes panel */
+  .wishes-panel { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 14px 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .wishes-inner { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+  .wish-pair-row { display: flex; gap: 0; }
+  .wish-pair-item { flex: 1; }
+  .wish-pair-divider { width: 0.5px; background: var(--border); margin: 0 12px; flex-shrink: 0; }
+  .wish-pair-label { font-size: 10px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; font-weight: 500; }
+  .wish-pair-sub { font-size: 10px; color: var(--text-hint); margin-bottom: 3px; }
+
+  .wish-arrow { font-size: 10px; color: var(--text-hint); text-align: center; letter-spacing: 0.06em; margin: 2px 0; }
+
+  .wish-block { background: var(--bg); border-radius: var(--radius-sm); padding: 8px 10px; }
+  .wish-block-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+  .wish-block-label { font-size: 10px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; font-weight: 500; flex-shrink: 0; }
+  .wish-block-sub { font-size: 10px; color: var(--text-hint); }
+
+  .wish-text { font-size: 13px; color: var(--text); font-family: 'Noto Serif TC', serif; line-height: 1.5; }
+  .wish-empty { color: var(--text-hint); font-style: italic; font-family: 'Noto Sans TC', sans-serif; font-size: 12px; }
+  .wish-edit-btn { flex-shrink: 0; padding: 5px 12px; border: 0.5px solid var(--border-md); border-radius: 20px; background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 12px; color: var(--text-muted); cursor: pointer; margin-top: 2px; }
+  .wish-edit-btn:hover { background: var(--bg); }
 </style>
 </head>
 <body>
@@ -160,6 +182,49 @@
     <button class="tab active" onclick="switchTab('record')">記錄</button>
     <button class="tab" onclick="switchTab('history')">歷史</button>
     <button class="tab" onclick="switchTab('cycle')">週期</button>
+  </div>
+
+  <!-- 大願小願常駐區 -->
+  <div id="wishes-panel" class="wishes-panel">
+    <div class="wishes-inner">
+      <div class="wish-pair-row">
+        <div class="wish-pair-item">
+          <div class="wish-pair-label">原創力</div>
+          <div class="wish-pair-sub">靈魂的優點</div>
+          <div class="wish-text" id="wish-creative">—</div>
+        </div>
+        <div class="wish-pair-divider"></div>
+        <div class="wish-pair-item">
+          <div class="wish-pair-label">原動力</div>
+          <div class="wish-pair-sub">靈魂的弱點</div>
+          <div class="wish-text" id="wish-drive">—</div>
+        </div>
+      </div>
+      <div class="wish-arrow">↓ 交織</div>
+      <div class="wish-block">
+        <div class="wish-block-header">
+          <span class="wish-block-label">大願</span>
+          <span class="wish-block-sub">對人我都加分</span>
+        </div>
+        <div class="wish-text" id="wish-big">—</div>
+      </div>
+      <div class="wish-arrow">↓ 實踐</div>
+      <div class="wish-block">
+        <div class="wish-block-header">
+          <span class="wish-block-label">小願</span>
+          <span class="wish-block-sub">本週習氣調整 <span id="wish-week-label"></span></span>
+        </div>
+        <div class="wish-text" id="wish-small">—</div>
+      </div>
+      <div class="wish-arrow">↓ 每天</div>
+      <div class="wish-block">
+        <div class="wish-block-header">
+          <span class="wish-block-label">情緒</span>
+          <span class="wish-block-sub">記錄，保持距離，不離棄</span>
+        </div>
+      </div>
+    </div>
+    <button class="wish-edit-btn" onclick="openWishModal()">編輯</button>
   </div>
 
   <div class="content">
@@ -277,6 +342,33 @@
       <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
     </div>
 
+  </div>
+</div>
+
+<!-- Wish Modal -->
+<div id="wish-modal" class="modal-overlay" style="display:none;" onclick="closeWishModal(event)">
+  <div class="modal">
+    <div class="modal-title">大願與小願</div>
+    <div class="form-group">
+      <label class="form-label">原創力</label>
+      <textarea id="wish-creative-input" placeholder="你的原創力是什麼？" style="min-height:64px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">原動力</label>
+      <textarea id="wish-drive-input" placeholder="你的原動力是什麼？" style="min-height:64px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">大願（長遠的存在意義）</label>
+      <textarea id="wish-big-input" placeholder="例：承實的愛" style="min-height:64px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">小願（本週目標）</label>
+      <textarea id="wish-small-input" placeholder="例：每天運動30分鐘，對自己溫柔一點" style="min-height:64px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeWishModal()">取消</button>
+      <button class="modal-btn primary" onclick="saveWishes()">儲存</button>
+    </div>
   </div>
 </div>
 
@@ -702,12 +794,87 @@ function deleteEntry(id) {
   renderHistory();
 }
 
+// ── Wishes ──
+let wishes = { big: '', small: '', creative: '', drive: '', updatedAt: '' };
+try { wishes = Object.assign({ big: '', small: '', creative: '', drive: '', updatedAt: '' }, JSON.parse(localStorage.getItem('good_day_wishes') || '{}')); } catch(e) {}
+
+function renderWishes() {
+  const bigEl = document.getElementById('wish-big');
+  const smallEl = document.getElementById('wish-small');
+  const weekEl = document.getElementById('wish-week-label');
+  const creativeEl = document.getElementById('wish-creative');
+  const driveEl = document.getElementById('wish-drive');
+
+  if (wishes.creative) {
+    creativeEl.textContent = wishes.creative;
+    creativeEl.classList.remove('wish-empty');
+  } else {
+    creativeEl.textContent = '點「編輯」填寫';
+    creativeEl.classList.add('wish-empty');
+  }
+
+  if (wishes.drive) {
+    driveEl.textContent = wishes.drive;
+    driveEl.classList.remove('wish-empty');
+  } else {
+    driveEl.textContent = '點「編輯」填寫';
+    driveEl.classList.add('wish-empty');
+  }
+
+  if (wishes.big) {
+    bigEl.textContent = wishes.big;
+    bigEl.classList.remove('wish-empty');
+  } else {
+    bigEl.textContent = '點「編輯」填寫你的大願';
+    bigEl.classList.add('wish-empty');
+  }
+
+  if (wishes.small) {
+    smallEl.textContent = wishes.small;
+    smallEl.classList.remove('wish-empty');
+    if (wishes.updatedAt) {
+      weekEl.textContent = '（' + wishes.updatedAt + ' 設定）';
+    }
+  } else {
+    smallEl.textContent = '點「編輯」填寫本週小願';
+    smallEl.classList.add('wish-empty');
+    weekEl.textContent = '';
+  }
+}
+
+function openWishModal() {
+  document.getElementById('wish-creative-input').value = wishes.creative || '';
+  document.getElementById('wish-drive-input').value = wishes.drive || '';
+  document.getElementById('wish-big-input').value = wishes.big || '';
+  document.getElementById('wish-small-input').value = wishes.small || '';
+  document.getElementById('wish-modal').style.display = 'flex';
+}
+
+function closeWishModal(event) {
+  if (!event || event.target === document.getElementById('wish-modal')) {
+    document.getElementById('wish-modal').style.display = 'none';
+  }
+}
+
+function saveWishes() {
+  const creative = document.getElementById('wish-creative-input').value.trim();
+  const drive = document.getElementById('wish-drive-input').value.trim();
+  const big = document.getElementById('wish-big-input').value.trim();
+  const small = document.getElementById('wish-small-input').value.trim();
+  const today = fmtDate(new Date());
+  wishes = { creative, drive, big, small, updatedAt: today };
+  try { localStorage.setItem('good_day_wishes', JSON.stringify(wishes)); } catch(e) {}
+  renderWishes();
+  document.getElementById('wish-modal').style.display = 'none';
+}
+
 buildScoreRow();
 buildEditScoreRow();
 buildWaterRow('water-row', v => { selectedWater = v; });
 buildWaterRow('edit-water-row', v => { editWater = v; });
 updateWaterInfo();
 updatePhase();
+renderWishes();
 document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
 </body>
