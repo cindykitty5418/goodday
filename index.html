@@ -24,9 +24,15 @@
   .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 
   /* header */
-  .header { padding: 2rem 1.5rem 1rem; border-bottom: 0.5px solid var(--border); }
+  .header { padding: 1.5rem 1.5rem 0.75rem; border-bottom: 0.5px solid var(--border); }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
   .header-title { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 400; letter-spacing: 0.05em; }
   .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.08em; }
+  .quote-edit-btn { padding: 4px 12px; border: 0.5px solid var(--border-md); border-radius: 20px; background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 11px; color: var(--text-muted); cursor: pointer; flex-shrink: 0; }
+  .quote-edit-btn:hover { background: var(--bg); }
+  .quote-display { cursor: pointer; padding: 0 0 0.5rem; }
+  .quote-text { font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--text); line-height: 1.7; font-style: italic; }
+  .quote-text-empty { font-size: 12px; color: var(--text-hint); font-style: italic; }
 
   /* tab bar */
   .tab-bar { display: flex; border-bottom: 0.5px solid var(--border); background: var(--surface); }
@@ -174,8 +180,16 @@
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-title">好日子練習</div>
-    <div class="header-sub">身體節律記錄</div>
+    <div class="header-top">
+      <div>
+        <div class="header-title">好日子練習</div>
+        <div class="header-sub">身體節律記錄</div>
+      </div>
+      <button class="quote-edit-btn" onclick="openQuoteModal()">金句</button>
+    </div>
+    <div id="quote-display" class="quote-display" onclick="openQuoteModal()">
+      <span id="quote-text" class="quote-text-empty">點此填寫你的金句</span>
+    </div>
   </div>
 
   <div class="tab-bar">
@@ -342,6 +356,21 @@
       <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
     </div>
 
+  </div>
+</div>
+
+<!-- Quote Modal -->
+<div id="quote-modal" class="modal-overlay" style="display:none;" onclick="closeQuoteModal(event)">
+  <div class="modal">
+    <div class="modal-title">金句</div>
+    <div class="form-group">
+      <label class="form-label">寫下你的金句</label>
+      <textarea id="quote-input" placeholder="例：能量是改變當下狀態的能力" style="min-height:100px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeQuoteModal()">取消</button>
+      <button class="modal-btn primary" onclick="saveQuote()">儲存</button>
+    </div>
   </div>
 </div>
 
@@ -660,22 +689,30 @@ function renderCycle() {
   if (!waterLogs.length) {
     waterSummary.innerHTML = '<p style="font-size:13px; color:var(--text-hint); padding: 8px 0;">還沒有喝水記錄</p>';
   } else {
-    const totalAvg = (waterLogs.reduce((s, w) => s + w.water, 0) / waterLogs.length).toFixed(0);
+    const totalAvg = Math.round(waterLogs.reduce((s, w) => s + w.water, 0) / waterLogs.length);
+
+    // Calculate per-phase average by matching waterLog dates to entries
+    const phaseWater = [1,2,3,4].map(w => {
+      const phaseEntries = entries.filter(e => e.week === w);
+      const phaseDates = [...new Set(phaseEntries.map(e => e.date))];
+      const phaseLogs = waterLogs.filter(wl => phaseDates.includes(wl.date));
+      if (!phaseLogs.length) return null;
+      const avg = Math.round(phaseLogs.reduce((s, wl) => s + wl.water, 0) / phaseLogs.length);
+      return { week: w, avg, days: phaseLogs.length };
+    }).filter(Boolean);
+
     waterSummary.innerHTML = `
       <div class="phase-row">
-        <span class="phase-row-name">平均每日喝水</span>
-        <span class="phase-row-stat">${totalAvg} cc</span>
+        <span class="phase-row-name">整體平均每日喝水</span>
+        <span class="phase-row-stat">${totalAvg} cc · ${waterLogs.length} 天</span>
       </div>
-      <div class="phase-row">
-        <span class="phase-row-name">記錄天數</span>
-        <span class="phase-row-stat">${waterLogs.length} 天</span>
-      </div>
-      ${waterLogs.slice(0, 5).map(w => `
-        <div class="phase-row">
-          <span class="phase-row-name" style="font-size:12px; color:var(--text-muted);">💧 ${w.date}</span>
-          <span class="phase-row-stat">${w.water} cc</span>
-        </div>`).join('')}
-      ${waterLogs.length > 5 ? `<p style="font-size:11px; color:var(--text-hint); padding: 6px 0;">顯示最近 5 筆</p>` : ''}
+      ${phaseWater.map(p => {
+        const phase = PHASES[p.week];
+        return `<div class="phase-row">
+          <span class="phase-row-name">${phase.emoji} ${phase.name}</span>
+          <span class="phase-row-stat">${p.avg} cc · ${p.days} 天</span>
+        </div>`;
+      }).join('')}
     `;
   }
 }
@@ -826,6 +863,39 @@ function deleteEntry(id) {
   renderHistory();
 }
 
+// ── Quote ──
+let quote = '';
+try { quote = localStorage.getItem('good_day_quote') || ''; } catch(e) {}
+
+function renderQuote() {
+  const el = document.getElementById('quote-text');
+  if (quote) {
+    el.textContent = '「' + quote + '」';
+    el.className = 'quote-text';
+  } else {
+    el.textContent = '點此填寫你的金句';
+    el.className = 'quote-text-empty';
+  }
+}
+
+function openQuoteModal() {
+  document.getElementById('quote-input').value = quote || '';
+  document.getElementById('quote-modal').style.display = 'flex';
+}
+
+function closeQuoteModal(event) {
+  if (!event || event.target === document.getElementById('quote-modal')) {
+    document.getElementById('quote-modal').style.display = 'none';
+  }
+}
+
+function saveQuote() {
+  quote = document.getElementById('quote-input').value.trim();
+  try { localStorage.setItem('good_day_quote', quote); } catch(e) {}
+  renderQuote();
+  document.getElementById('quote-modal').style.display = 'none';
+}
+
 // ── Wishes ──
 let wishes = { big: '', small: '', creative: '', drive: '', updatedAt: '' };
 try { wishes = Object.assign({ big: '', small: '', creative: '', drive: '', updatedAt: '' }, JSON.parse(localStorage.getItem('good_day_wishes') || '{}')); } catch(e) {}
@@ -908,6 +978,7 @@ migrateWaterData();
 updateWaterInfo();
 updatePhase();
 renderWishes();
+renderQuote();
 document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
 </script>
 </body>
