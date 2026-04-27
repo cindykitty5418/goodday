@@ -96,6 +96,9 @@
   .entry-exercise { font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
   .entry-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .water-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .diet-portion-row { display: flex; gap: 8px; }
+  .portion-btn { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .portion-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
   .section-divider { font-size: 11px; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; padding: 8px 0 12px; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; font-weight: 500; }
   .water-btn { padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border-md); background: transparent; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
   .water-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
@@ -311,6 +314,37 @@
       <div id="water-today-info" style="font-size:12px; color: var(--text-muted); margin-bottom: 0.75rem; display:none;"></div>
 
       <button class="submit-btn" id="water-submit-btn" onclick="saveWater()" style="background: var(--accent);">儲存今日喝水</button>
+
+      <!-- 飲食區塊 -->
+      <div class="section-divider" style="margin-top: 1.5rem;">飲食記錄</div>
+
+      <div class="form-group">
+        <label class="form-label">餐別</label>
+        <select id="diet-meal">
+          <option value="早餐">早餐</option>
+          <option value="午餐">午餐</option>
+          <option value="晚餐">晚餐</option>
+          <option value="點心">點心</option>
+          <option value="飲料">飲料</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">食物內容</label>
+        <textarea id="diet-food" placeholder="貼上 AI 給你的描述，例：雞蛋兩顆、全麥吐司一片、黑咖啡" style="min-height:72px;"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">份量感覺</label>
+        <div class="diet-portion-row" id="diet-portion-row"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">備注（選填）</label>
+        <textarea id="diet-note" placeholder="其他想記錄的..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="diet-submit-btn" onclick="saveDietEntry()" style="background: var(--accent); margin-bottom: 2rem;">儲存飲食記錄</button>
     </div>
 
     <!-- 歷史 -->
@@ -631,6 +665,14 @@ function renderHistory() {
         ${wLog ? `<span>· 💧 ${wLog.water}cc</span>` : ''}
       </div>
       ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
+      ${dietEntries.filter(d => d.date === e.date).length > 0 ? `
+      <div style="margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border);">
+        <div style="font-size:10px; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:4px;">飲食</div>
+        ${dietEntries.filter(d => d.date === e.date).map(d => `
+          <div style="font-size:12px; color:var(--text-muted); padding: 2px 0;">
+            ${d.meal}：${d.food}（${d.portion}）
+          </div>`).join('')}
+      </div>` : ''}
       <div class="entry-actions">
         <button class="entry-btn" onclick="openEdit(${e.id})">編輯</button>
         <button class="entry-btn delete" onclick="deleteEntry(${e.id})">刪除</button>
@@ -719,13 +761,14 @@ function renderCycle() {
 
 function exportData() {
   if (!entries.length) { alert('還沒有記錄可以匯出'); return; }
-  const text = '好日子練習 - 身體節律記錄\n' + '='.repeat(30) + '\n\n' +
-    entries.map(e => {
-      const p = PHASES[e.week];
-      const wLog = waterLogs.find(w => w.date === e.date);
-      return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'} | 喝水${wLog ? wLog.water + 'cc' : '—'}${e.note ? ' | ' + e.note : ''}`;
-    }).join('\n');
-  navigator.clipboard.writeText(text).then(() => {
+  const exerciseText = '【運動記錄】\n' + entries.map(e => {
+    const p = PHASES[e.week];
+    const wLog = waterLogs.find(w => w.date === e.date);
+    const dayDiet = dietEntries.filter(d => d.date === e.date);
+    const dietText = dayDiet.length ? ' | 飲食：' + dayDiet.map(d => `${d.meal}${d.food}(${d.portion})`).join('、') : '';
+    return `${e.date} ${e.time} | ${e.week}-${e.day}（${p.name}）| ${e.exercise} | 身體${e.score}/10 | ${e.mood || '—'} | 喝水${wLog ? wLog.water + 'cc' : '—'}${dietText}${e.note ? ' | ' + e.note : ''}`;
+  }).join('\n');
+  navigator.clipboard.writeText(exerciseText).then(() => {
     const btns = document.querySelectorAll('.export-btn');
     btns.forEach(b => { b.textContent = '已複製！貼給 AI 分析吧 ✓'; });
     setTimeout(() => btns.forEach(b => b.textContent = '複製所有記錄（貼給 AI 分析）'), 2500);
@@ -970,10 +1013,114 @@ function saveWishes() {
   document.getElementById('wish-modal').style.display = 'none';
 }
 
+// ── Diet ──
+let dietEntries = [];
+let selectedPortion = null;
+try { dietEntries = JSON.parse(localStorage.getItem('good_day_diet') || '[]'); } catch(e) {}
+
+function saveDietStorage() {
+  try { localStorage.setItem('good_day_diet', JSON.stringify(dietEntries)); } catch(e) {}
+}
+
+function buildPortionRow() {
+  const row = document.getElementById('diet-portion-row');
+  ['少', '普通', '剛剛好', '多'].forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'portion-btn';
+    btn.textContent = p;
+    btn.onclick = () => {
+      selectedPortion = p;
+      document.querySelectorAll('.portion-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    row.appendChild(btn);
+  });
+}
+
+function saveDietEntry() {
+  const dateVal = document.getElementById('record-date').value;
+  const meal = document.getElementById('diet-meal').value;
+  const food = document.getElementById('diet-food').value.trim();
+  const note = document.getElementById('diet-note').value.trim();
+
+  if (!food) { alert('請填寫吃了什麼'); return; }
+
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  const date = fmtDate(dateObj);
+
+  dietEntries.unshift({ id: Date.now(), date, meal, food, portion: selectedPortion || '普通', note });
+  saveDietStorage();
+
+  document.getElementById('diet-food').value = '';
+  document.getElementById('diet-note').value = '';
+  selectedPortion = null;
+  document.querySelectorAll('.portion-btn').forEach(b => b.classList.remove('selected'));
+
+  const btn = document.getElementById('diet-submit-btn');
+  btn.textContent = '已儲存 ✓';
+  setTimeout(() => { btn.textContent = '儲存飲食記錄'; }, 1800);
+}
+
+function renderDietHistory() {
+  const list = document.getElementById('diet-history-list');
+  if (!dietEntries.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🍽</div><p>還沒有飲食記錄<br>從第一筆開始吧</p></div>';
+    return;
+  }
+
+  const portionColor = { '少': '#F09595', '普通': '#C0DD97', '多': '#3B6D11' };
+
+  // Group by date
+  const grouped = {};
+  dietEntries.forEach(e => {
+    if (!grouped[e.date]) grouped[e.date] = [];
+    grouped[e.date].push(e);
+  });
+
+  list.innerHTML = Object.entries(grouped).map(([date, entries]) => {
+    const rows = entries.map(e => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 0.5px solid var(--border);">
+        <div>
+          <span style="font-size:11px; color:var(--text-muted); margin-right:8px;">${e.meal}</span>
+          <span style="font-size:13px; color:var(--text);">${e.food}</span>
+          ${e.note ? `<div style="font-size:11px; color:var(--text-hint); margin-top:2px;">${e.note}</div>` : ''}
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:${portionColor[e.portion] || '#888'};">${e.portion}</span>
+          <button onclick="deleteDietEntry(${e.id})" style="border:none; background:none; color:var(--text-hint); cursor:pointer; font-size:12px;">✕</button>
+        </div>
+      </div>`).join('');
+
+    return `<div class="entry-card" style="margin-bottom:10px;">
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.04em;">${date}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+function deleteDietEntry(id) {
+  if (!confirm('確定要刪除這筆記錄嗎？')) return;
+  dietEntries = dietEntries.filter(e => e.id !== id);
+  saveDietStorage();
+  renderDietHistory();
+}
+
+function exportDietData() {
+  if (!dietEntries.length) { alert('還沒有飲食記錄可以匯出'); return; }
+  const text = '好日子練習 - 飲食記錄\n' + '='.repeat(30) + '\n\n' +
+    dietEntries.map(e => `${e.date} ${e.meal} | ${e.food} | 份量：${e.portion}${e.note ? ' | ' + e.note : ''}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#section-diet .export-btn');
+    btn.textContent = '已複製！貼給 AI 分析吧 ✓';
+    setTimeout(() => btn.textContent = '複製飲食記錄（貼給 AI 分析）', 2500);
+  });
+}
+
 buildScoreRow();
 buildEditScoreRow();
 buildWaterRow('water-row', v => { selectedWater = v; });
 buildWaterRow('edit-water-row', v => { editWater = v; });
+buildPortionRow();
 migrateWaterData();
 updateWaterInfo();
 updatePhase();
