@@ -489,6 +489,26 @@
       <label class="form-label">備注</label>
       <textarea id="edit-note"></textarea>
     </div>
+
+    <div style="height:0.5px; background:var(--border); margin: 1rem 0;"></div>
+    <div style="font-size:11px; letter-spacing:0.1em; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.75rem;">當日飲食記錄</div>
+
+    <div id="edit-diet-list"></div>
+
+    <div class="form-group" style="margin-top:0.75rem;">
+      <label class="form-label">新增飲食</label>
+      <select id="edit-diet-meal" style="margin-bottom:8px;">
+        <option value="早餐">早餐</option>
+        <option value="午餐">午餐</option>
+        <option value="晚餐">晚餐</option>
+        <option value="點心">點心</option>
+        <option value="飲料">飲料</option>
+      </select>
+      <textarea id="edit-diet-food" placeholder="食物內容" style="min-height:60px; margin-bottom:8px;"></textarea>
+      <div class="diet-portion-row" id="edit-diet-portion-row"></div>
+    </div>
+    <button class="modal-btn" onclick="addEditDietEntry()" style="margin-bottom:0.5rem;">新增這餐</button>
+
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal()">取消</button>
       <button class="modal-btn primary" onclick="saveEdit()">儲存</button>
@@ -879,6 +899,11 @@ function openEdit(id) {
     b.classList.toggle('selected', i + 1 === e.score);
   });
 
+  // Load diet entries for this date
+  editDietEntries = JSON.parse(JSON.stringify(dietEntries));
+  buildEditDietPortionRow();
+  renderEditDietList(e.date);
+
   document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -922,6 +947,10 @@ function saveEdit() {
     }
     try { localStorage.setItem('good_day_water', JSON.stringify(waterLogs)); } catch(err) {}
   }
+
+  // Save diet entries
+  dietEntries = editDietEntries;
+  saveDietStorage();
 
   document.getElementById('edit-modal').style.display = 'none';
   editingId = null;
@@ -1061,11 +1090,70 @@ function buildPortionRow() {
     btn.textContent = p;
     btn.onclick = () => {
       selectedPortion = p;
-      document.querySelectorAll('.portion-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#diet-portion-row .portion-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
     };
     row.appendChild(btn);
   });
+}
+
+function buildEditDietPortionRow() {
+  const row = document.getElementById('edit-diet-portion-row');
+  row.innerHTML = '';
+  ['少', '普通', '剛剛好', '多'].forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'portion-btn';
+    btn.textContent = p;
+    btn.onclick = () => {
+      editDietPortion = p;
+      document.querySelectorAll('#edit-diet-portion-row .portion-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    row.appendChild(btn);
+  });
+}
+
+let editDietPortion = '普通';
+let editDietEntries = [];
+
+function renderEditDietList(date) {
+  const list = document.getElementById('edit-diet-list');
+  const dayDiet = editDietEntries.filter(d => d.date === date);
+  if (!dayDiet.length) {
+    list.innerHTML = '<p style="font-size:12px; color:var(--text-hint); padding:4px 0;">還沒有飲食記錄</p>';
+    return;
+  }
+  list.innerHTML = dayDiet.map(d => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border);">
+      <div>
+        <span style="font-size:11px; color:var(--text-muted); margin-right:6px;">${d.meal}</span>
+        <span style="font-size:13px; color:var(--text);">${d.food}</span>
+        <span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(${d.portion})</span>
+      </div>
+      <button onclick="removeEditDietEntry(${d.id})" style="border:none; background:none; color:var(--text-hint); cursor:pointer; font-size:12px;">✕</button>
+    </div>`).join('');
+}
+
+function addEditDietEntry() {
+  const food = document.getElementById('edit-diet-food').value.trim();
+  if (!food) { alert('請填寫食物內容'); return; }
+  const meal = document.getElementById('edit-diet-meal').value;
+  const dateVal = document.getElementById('edit-date').value;
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  const date = fmtDate(dateObj);
+
+  editDietEntries.push({ id: Date.now(), date, meal, food, portion: editDietPortion || '普通', note: '' });
+  document.getElementById('edit-diet-food').value = '';
+  editDietPortion = '普通';
+  buildEditDietPortionRow();
+  renderEditDietList(date);
+}
+
+function removeEditDietEntry(id) {
+  editDietEntries = editDietEntries.filter(e => e.id !== id);
+  const dateVal = document.getElementById('edit-date').value;
+  const dateObj = dateVal ? new Date(dateVal + 'T12:00:00') : new Date();
+  renderEditDietList(fmtDate(dateObj));
 }
 
 function saveDietEntry() {
@@ -1152,6 +1240,7 @@ buildEditScoreRow();
 buildWaterRow('water-row', v => { selectedWater = v; });
 buildWaterRow('edit-water-row', v => { editWater = v; });
 buildPortionRow();
+buildEditDietPortionRow();
 migrateWaterData();
 updateWaterInfo();
 updatePhase();
