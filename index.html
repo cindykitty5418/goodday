@@ -387,6 +387,11 @@
       <div class="viz-title">喝水記錄</div>
       <div id="water-summary"></div>
 
+      <div class="divider"></div>
+
+      <div class="viz-title">飲食記錄</div>
+      <div id="diet-summary"></div>
+
       <button class="export-btn" onclick="exportData()">複製所有記錄（貼給 AI 分析）</button>
     </div>
 
@@ -755,6 +760,32 @@ function renderCycle() {
           <span class="phase-row-stat">${p.avg} cc · ${p.days} 天</span>
         </div>`;
       }).join('')}
+    `;
+  }
+
+  // Diet summary
+  const dietSummary = document.getElementById('diet-summary');
+  if (!dietEntries.length) {
+    dietSummary.innerHTML = '<p style="font-size:13px; color:var(--text-hint); padding: 8px 0;">還沒有飲食記錄</p>';
+  } else {
+    const totalMeals = dietEntries.length;
+    const portionCount = { '少': 0, '普通': 0, '剛剛好': 0, '多': 0 };
+    dietEntries.forEach(e => { if (portionCount[e.portion] !== undefined) portionCount[e.portion]++; });
+    const mostCommon = Object.entries(portionCount).sort((a,b) => b[1]-a[1])[0];
+    dietSummary.innerHTML = `
+      <div class="phase-row">
+        <span class="phase-row-name">總記錄餐數</span>
+        <span class="phase-row-stat">${totalMeals} 餐</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-row-name">最常見份量感覺</span>
+        <span class="phase-row-stat">${mostCommon[0]} · ${mostCommon[1]} 次</span>
+      </div>
+      ${Object.entries(portionCount).filter(([,v]) => v > 0).map(([k,v]) => `
+        <div class="phase-row">
+          <span class="phase-row-name" style="font-size:12px; color:var(--text-muted);">${k}</span>
+          <span class="phase-row-stat">${v} 次</span>
+        </div>`).join('')}
     `;
   }
 }
