@@ -369,10 +369,10 @@
       <div class="viz-section">
         <div class="viz-title">28天記錄地圖</div>
         <div class="week-labels">
-          <div class="week-label">一</div><div class="week-label">二</div>
-          <div class="week-label">三</div><div class="week-label">四</div>
-          <div class="week-label">五</div><div class="week-label">六</div>
-          <div class="week-label">七</div>
+          <div class="week-label">1</div><div class="week-label">2</div>
+          <div class="week-label">3</div><div class="week-label">4</div>
+          <div class="week-label">5</div><div class="week-label">6</div>
+          <div class="week-label">7</div>
         </div>
         <div class="viz-grid" id="viz-grid"></div>
       </div>
@@ -673,7 +673,13 @@ function renderHistory() {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><p>還沒有記錄<br>從第一筆開始吧</p></div>';
     return;
   }
-  list.innerHTML = entries.map(e => {
+  // Sort by date descending
+  const sorted = [...entries].sort((a, b) => {
+    const da = new Date(a.date.replace(/\//g, '-'));
+    const db = new Date(b.date.replace(/\//g, '-'));
+    return db - da;
+  });
+  list.innerHTML = sorted.map(e => {
     const p = PHASES[e.week];
     const sc = SCORE_COLORS[e.score] || '#ccc';
     const wLog = waterLogs.find(w => w.date === e.date);
@@ -713,10 +719,20 @@ function renderCycle() {
     document.getElementById('stat-avg').textContent = avg.toFixed(1);
   }
 
+  // Find max week and max day per week to build flexible grid
+  const maxWeek = entries.length ? Math.max(...entries.map(e => e.week)) : 4;
+  const maxDayPerWeek = {};
+  for (let w = 1; w <= maxWeek; w++) {
+    const weekEntries = entries.filter(e => e.week === w);
+    maxDayPerWeek[w] = weekEntries.length ? Math.max(...weekEntries.map(e => e.day)) : 7;
+  }
+
   const grid = document.getElementById('viz-grid');
   grid.innerHTML = '';
-  for (let w = 1; w <= 4; w++) {
-    for (let d = 1; d <= 7; d++) {
+
+  for (let w = 1; w <= maxWeek; w++) {
+    const maxDay = Math.max(7, maxDayPerWeek[w]);
+    for (let d = 1; d <= maxDay; d++) {
       const cell = document.createElement('div');
       cell.className = 'viz-cell';
       const dayEntries = entries.filter(e => e.week === w && e.day === d);
